@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UCP Profile Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', 'Helvetica Neue', sans-serif;
+    color: #1a1a1a; background: #fafafa; min-height: 100vh;
+  }
+  .layout { display: flex; min-height: 100vh; }
+
+  /* Panels */
+  .panel-left {
+    flex: 1 1 50%; padding: 28px 32px 80px; overflow-y: auto;
+    max-height: 100vh; border-right: 1px solid #eee; background: #fafafa;
+  }
+  .panel-right {
+    flex: 1 1 50%; padding: 28px 32px 80px; overflow-y: auto;
+    max-height: 100vh; background: #fff; position: relative;
+  }
+
+  /* Typography */
+  .section-title {
+    font-size: 13px; font-weight: 700; color: #1a1a1a; letter-spacing: 0.8px;
+    text-transform: uppercase; margin: 0 0 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 6px; background: #1a1a1a;
+    color: #fff; font-size: 11px; font-weight: 700;
+  }
+  .divider { height: 1px; background: #eee; margin: 24px 0; }
+  .hint { font-size: 11.5px; color: #999; margin-top: 4px; line-height: 1.4; font-style: italic; }
+
+  /* Fields */
+  .field { margin-bottom: 16px; }
+  .field-label {
+    font-size: 13px; color: #555; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .badge-req { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 4px; background: #fff0f0; color: #d44; }
+  .badge-opt { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 4px; background: #f0f4ff; color: #99a; }
+
+  /* Inputs */
+  .text-input {
+    width: 100%; padding: 9px 12px; border-radius: 6px;
+    border: 1.5px solid #ddd; background: #fff; font-size: 14px;
+    color: #1a1a1a; outline: none; font-family: inherit; transition: border-color 0.15s;
+  }
+  .text-input:focus { border-color: #aaa; }
+  .text-input.mono { font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .select-input {
+    width: 100%; padding: 9px 12px; border-radius: 6px;
+    border: 1.5px solid #ddd; background: #fff; font-size: 13px;
+    color: #1a1a1a; outline: none; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  textarea.text-input {
+    resize: vertical; font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.5;
+  }
+
+  /* Tags (multi-select) */
+  .tag-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    border: 1.5px solid #ddd; background: #fff; color: #999;
+    cursor: pointer; transition: all 0.15s; user-select: none;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .tag.active { border-color: #2a2a2a; background: #2a2a2a; color: #fff; }
+  .tag .dot { font-size: 8px; }
+
+  /* Pills (single-select) */
+  .pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    padding: 7px 18px; border-radius: 20px; font-size: 13px; font-weight: 500;
+    border: 1.5px solid #ddd; background: #fff; color: #999;
+    cursor: pointer; transition: all 0.15s; user-select: none;
+  }
+  .pill.active { border-color: #2a2a2a; background: #2a2a2a; color: #fff; }
+
+  /* Toggles */
+  .toggle-row {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; user-select: none; padding: 4px 0;
+  }
+  .toggle-track {
+    width: 38px; height: 22px; border-radius: 11px; flex-shrink: 0;
+    background: #ddd; position: relative; transition: background 0.2s;
+  }
+  .toggle-track.active { background: #2a2a2a; }
+  .toggle-dot {
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    position: absolute; top: 3px; left: 3px;
+    transition: left 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  }
+  .toggle-track.active .toggle-dot { left: 19px; }
+  .toggle-label { font-size: 13px; color: #555; }
+
+  /* Rows */
+  .row { display: flex; gap: 12px; }
+  .row > .col { flex: 1; min-width: 0; }
+  .sub-options { margin-top: 14px; padding-left: 48px; }
+
+  /* Checkbox list for capabilities */
+  .cap-row {
+    display: flex; align-items: flex-start; gap: 10px; padding: 8px 0;
+    cursor: pointer; user-select: none;
+  }
+  .cap-check {
+    width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #ddd;
+    flex-shrink: 0; margin-top: 1px; display: flex; align-items: center;
+    justify-content: center; transition: all 0.15s; font-size: 11px; color: #fff;
+  }
+  .cap-check.active { background: #2a2a2a; border-color: #2a2a2a; }
+  .cap-name { font-size: 13px; font-family: 'IBM Plex Mono', monospace; color: #1a1a1a; }
+  .cap-desc { font-size: 11.5px; color: #999; margin-top: 1px; }
+  .cap-extends { font-size: 11px; color: #b8b; font-family: 'IBM Plex Mono', monospace; }
+
+  /* JSON output */
+  .json-box {
+    background: #fafafa; border-radius: 10px; border: 1px solid #eee;
+    padding: 20px 24px; overflow-x: auto;
+  }
+  .json-box pre {
+    margin: 0; font-size: 12.5px; line-height: 1.7; color: #333;
+    font-family: 'IBM Plex Mono', monospace;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .key { color: #7c3aed; }
+  .str { color: #16803c; }
+  .num { color: #b45309; }
+  .bool { color: #0369a1; }
+
+  .copy-btn {
+    padding: 10px 24px; border-radius: 8px;
+    border: 1.5px solid #ddd; background: #fff; color: #1a1a1a;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif; transition: all 0.2s;
+  }
+  .copy-btn.copied { background: #2a2a2a; color: #fff; border-color: #2a2a2a; }
+
+  .sticky-header {
+    position: sticky; top: 0; background: #fff; z-index: 10;
+    padding: 0 0 16px; border-bottom: 1px solid #eee; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  /* Signing key card */
+  .key-card {
+    background: #fff; border: 1.5px solid #eee; border-radius: 10px;
+    padding: 16px 20px; margin-bottom: 12px;
+  }
+  .key-card-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+  }
+  .remove-btn {
+    font-size: 11px; color: #d44; cursor: pointer; padding: 4px 10px;
+    border: 1px solid #fcc; border-radius: 4px; background: #fff0f0;
+  }
+  .remove-btn:hover { background: #ffe0e0; }
+
+  .add-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border-radius: 8px;
+    border: 1.5px dashed #ccc; background: transparent;
+    color: #777; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .add-btn:hover { border-color: #999; color: #555; }
+
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .panel-left, .panel-right { max-height: none; border-right: none; }
+    .panel-left { border-bottom: 1px solid #eee; }
+    .sticky-header { position: static; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ════════════ LEFT: Form ════════════ -->
+<div class="panel-left">
+
+  <!-- ── 1. UCP Metadata ── -->
+  <div class="section-title"><span class="num">1</span> UCP Metadata</div>
+  <div class="field">
+    <div class="field-label">Protocol version <span class="badge-req">required</span></div>
+    <div class="pill-group" data-field="ucpVersion">
+      <div class="pill active" data-value="2026-01-11">2026-01-11</div>
+      <div class="pill" data-value="2026-01-23">2026-01-23</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── 2. Services ── -->
+  <div class="section-title"><span class="num">2</span> Services — dev.ucp.shopping</div>
+  <div class="hint" style="margin-top:-8px;margin-bottom:14px;">Transports your business supports. Enable at least one.</div>
+
+  <div class="field">
+    <div class="field-label">Service version</div>
+    <div class="pill-group" data-field="serviceVersion">
+      <div class="pill active" data-value="2026-01-11">2026-01-11</div>
+      <div class="pill" data-value="2026-01-23">2026-01-23</div>
+    </div>
+  </div>
+
+  <!-- REST -->
+  <div class="toggle-row" data-toggle="restEnabled" style="margin-bottom:10px;">
+    <div class="toggle-track active"><div class="toggle-dot"></div></div>
+    <span class="toggle-label" style="font-weight:600;">REST API</span>
+  </div>
+  <div id="restFields">
+    <div class="field">
+      <div class="field-label">REST endpoint <span class="badge-req">required</span></div>
+      <input class="text-input mono" id="restEndpoint" placeholder="https://business.example.com/ucp/v1">
+    </div>
+  </div>
+
+  <!-- MCP -->
+  <div class="toggle-row" data-toggle="mcpEnabled" style="margin-bottom:10px;margin-top:14px;">
+    <div class="toggle-track"><div class="toggle-dot"></div></div>
+    <span class="toggle-label" style="font-weight:600;">MCP (Model Context Protocol)</span>
+  </div>
+  <div id="mcpFields" style="display:none;">
+    <div class="field">
+      <div class="field-label">MCP endpoint <span class="badge-req">required</span></div>
+      <input class="text-input mono" id="mcpEndpoint" placeholder="https://business.example.com/ucp/mcp">
+    </div>
+  </div>
+
+  <!-- A2A -->
+  <div class="toggle-row" data-toggle="a2aEnabled" style="margin-bottom:10px;margin-top:14px;">
+    <div class="toggle-track"><div class="toggle-dot"></div></div>
+    <span class="toggle-label" style="font-weight:600;">A2A (Agent-to-Agent)</span>
+  </div>
+  <div id="a2aFields" style="display:none;">
+    <div class="field">
+      <div class="field-label">A2A agent card URL <span class="badge-req">required</span></div>
+      <input class="text-input mono" id="a2aEndpoint" placeholder="https://business.example.com/.well-known/agent-card.json">
+    </div>
+  </div>
+
+  <!-- Embedded -->
+  <div class="toggle-row" data-toggle="embeddedEnabled" style="margin-bottom:10px;margin-top:14px;">
+    <div class="toggle-track"><div class="toggle-dot"></div></div>
+    <span class="toggle-label" style="font-weight:600;">Embedded checkout</span>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── 3. Capabilities ── -->
+  <div class="section-title"><span class="num">3</span> Capabilities</div>
+  <div class="hint" style="margin-top:-8px;margin-bottom:14px;">Select the capabilities your business supports. Extensions require their parent capability.</div>
+
+  <div id="capList"></div>
+
+  <div class="divider"></div>
+
+  <!-- ── 4. Payment Handler (Google Pay) ── -->
+  <div class="section-title"><span class="num">4</span> Payment — Google Pay Handler</div>
+
+  <div class="field">
+    <div class="field-label">Environment</div>
+    <div class="pill-group" data-field="gpayEnvironment">
+      <div class="pill active" data-value="TEST">TEST</div>
+      <div class="pill" data-value="PRODUCTION">PRODUCTION</div>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Merchant name <span class="badge-opt">optional</span></div>
+    <input class="text-input" id="merchantName" placeholder="Example Merchant">
+  </div>
+  <div class="field">
+    <div class="field-label">Merchant ID <span class="badge-req">required</span></div>
+    <input class="text-input mono" id="merchantId" placeholder="01234567890123456789">
+  </div>
+  <div class="field">
+    <div class="field-label">Merchant origin <span class="badge-opt">optional</span></div>
+    <input class="text-input mono" id="merchantOrigin" placeholder="checkout.merchant.com">
+  </div>
+
+  <div style="height:12px;"></div>
+  <div class="field">
+    <div class="field-label">Auth methods <span class="badge-req">required</span></div>
+    <div class="tag-group" data-field="allowedAuthMethods">
+      <div class="tag active" data-value="PAN_ONLY"><span class="dot">●</span> PAN_ONLY</div>
+      <div class="tag active" data-value="CRYPTOGRAM_3DS"><span class="dot">●</span> CRYPTOGRAM_3DS</div>
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Card networks <span class="badge-req">required</span></div>
+    <div class="tag-group" data-field="allowedCardNetworks">
+      <div class="tag" data-value="AMEX">AMEX</div>
+      <div class="tag" data-value="DISCOVER">DISCOVER</div>
+      <div class="tag" data-value="INTERAC">INTERAC</div>
+      <div class="tag" data-value="JCB">JCB</div>
+      <div class="tag active" data-value="MASTERCARD"><span class="dot">●</span> MASTERCARD</div>
+      <div class="tag active" data-value="VISA"><span class="dot">●</span> VISA</div>
+    </div>
+  </div>
+
+  <div style="height:12px;"></div>
+  <div class="field">
+    <div class="field-label">Tokenization type</div>
+    <div class="pill-group" data-field="tokenizationType">
+      <div class="pill active" data-value="PAYMENT_GATEWAY">Payment gateway</div>
+      <div class="pill" data-value="DIRECT">Direct</div>
+    </div>
+  </div>
+  <div id="gatewayFields">
+    <div class="field">
+      <div class="field-label">Gateway <span class="badge-req">required</span></div>
+      <select class="select-input" id="gateway">
+        <option>adyen</option><option>braintree</option><option>chase</option><option>checkoutltd</option>
+        <option>cybersource</option><option>datatrans</option><option>globalpaymentsintegrated</option>
+        <option>mpgs</option><option>paypal</option><option>square</option>
+        <option selected>stripe</option><option>worldpay</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="field-label">Gateway Merchant ID <span class="badge-req">required</span></div>
+      <input class="text-input mono" id="gatewayMerchantId" placeholder="YOUR_GATEWAY_MERCHANT_ID">
+    </div>
+  </div>
+  <div id="directFields" style="display:none;">
+    <div class="field">
+      <div class="field-label">Public encryption key (ECv2) <span class="badge-req">required</span></div>
+      <textarea class="text-input" id="directPublicKey" rows="3" placeholder="BOdoXP1aiNp...."></textarea>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── 5. Signing Keys ── -->
+  <div class="section-title"><span class="num">5</span> Signing Keys (JWK)</div>
+  <div class="hint" style="margin-top:-8px;margin-bottom:14px;">Public keys used to verify webhook signatures from your server.</div>
+  <div id="signingKeysList"></div>
+  <button class="add-btn" onclick="addSigningKey()">+ Add signing key</button>
+
+</div>
+
+<!-- ════════════ RIGHT: JSON ════════════ -->
+<div class="panel-right">
+  <div class="sticky-header">
+    <div class="section-title" style="margin:0;">Generated UCP Profile</div>
+    <button class="copy-btn" id="copyBtn" onclick="copyJSON()">Copy JSON</button>
+  </div>
+  <div class="json-box">
+    <pre id="jsonOutput"></pre>
+  </div>
+  <div class="hint" style="margin-top:12px;">
+    Publish this JSON at <code style="background:#f0f0f0;padding:2px 6px;border-radius:3px;font-size:12px;">/.well-known/ucp</code> on your domain.
+  </div>
+</div>
+
+</div>
+
+<script>
+// ── Constants ──
+const UCP_VERSION_DEFAULT = "2026-01-11";
+
+const CAPABILITIES = [
+  { name: "dev.ucp.shopping.checkout", desc: "Core checkout sessions", on: true },
+  { name: "dev.ucp.shopping.fulfillment", desc: "Shipping & fulfillment options", extends: "dev.ucp.shopping.checkout", on: true },
+  { name: "dev.ucp.shopping.discount", desc: "Discount & promo code support", extends: "dev.ucp.shopping.checkout", on: false },
+  { name: "dev.ucp.shopping.order", desc: "Order lifecycle management", on: false },
+  { name: "dev.ucp.shopping.identity_linking", desc: "OAuth-based account linking", on: false },
+];
+
+// ── State ──
+const state = {
+  gpayHandlerId: crypto.randomUUID ? crypto.randomUUID() : genUUID(),
+  gpayEnvironment: "TEST",
+  tokenizationType: "PAYMENT_GATEWAY",
+  ucpVersion: "2026-01-11",
+  serviceVersion: "2026-01-11",
+  allowedAuthMethods: ["PAN_ONLY", "CRYPTOGRAM_3DS"],
+  allowedCardNetworks: ["VISA", "MASTERCARD"],
+  // Toggles
+  restEnabled: true,
+  mcpEnabled: false,
+  a2aEnabled: false,
+  embeddedEnabled: false,
+  // Capabilities
+  capabilities: CAPABILITIES.map(c => ({ ...c })),
+  // Signing keys
+  signingKeys: [],
+};
+
+function genUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+// ── Build capabilities list UI ──
+function renderCapabilities() {
+  const el = document.getElementById('capList');
+  el.innerHTML = '';
+  state.capabilities.forEach((cap, i) => {
+    const row = document.createElement('div');
+    row.className = 'cap-row';
+    row.dataset.index = i;
+    const parentOff = cap.extends && !state.capabilities.find(c => c.name === cap.extends && c.on);
+    const disabled = parentOff;
+    row.style.opacity = disabled ? '0.4' : '1';
+    row.innerHTML = `
+      <div class="cap-check ${cap.on && !disabled ? 'active' : ''}">${cap.on && !disabled ? '✓' : ''}</div>
+      <div>
+        <div class="cap-name">${cap.name}</div>
+        <div class="cap-desc">${cap.desc}</div>
+        ${cap.extends ? `<div class="cap-extends">extends ${cap.extends}</div>` : ''}
+      </div>`;
+    if (!disabled) {
+      row.addEventListener('click', () => {
+        cap.on = !cap.on;
+        // Turn off extensions if parent turned off
+        if (!cap.on) {
+          state.capabilities.forEach(c => { if (c.extends === cap.name) c.on = false; });
+        }
+        renderCapabilities();
+        render();
+      });
+    }
+    el.appendChild(row);
+  });
+}
+
+// ── Signing keys UI ──
+function renderSigningKeys() {
+  const el = document.getElementById('signingKeysList');
+  el.innerHTML = '';
+  state.signingKeys.forEach((key, i) => {
+    const card = document.createElement('div');
+    card.className = 'key-card';
+    card.innerHTML = `
+      <div class="key-card-header">
+        <span style="font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace;">Key #${i + 1}</span>
+        <button class="remove-btn" onclick="removeSigningKey(${i})">Remove</button>
+      </div>
+      <div class="row" style="margin-bottom:10px;">
+        <div class="col">
+          <div class="field" style="margin-bottom:8px;">
+            <div class="field-label">Key ID (kid)</div>
+            <input class="text-input mono" value="${key.kid}" oninput="updateKey(${i},'kid',this.value)" placeholder="business_2025">
+          </div>
+        </div>
+        <div class="col">
+          <div class="field" style="margin-bottom:8px;">
+            <div class="field-label">Algorithm</div>
+            <select class="select-input" onchange="updateKey(${i},'alg',this.value)">
+              <option ${key.alg==='ES256'?'selected':''}>ES256</option>
+              <option ${key.alg==='RS256'?'selected':''}>RS256</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <div class="field-label">Public key (x) <span class="badge-req">required</span></div>
+        <input class="text-input mono" value="${key.x}" oninput="updateKey(${i},'x',this.value)" placeholder="Base64url-encoded X coordinate" style="margin-bottom:8px;">
+        <div class="field-label">Public key (y) <span class="badge-req">required</span></div>
+        <input class="text-input mono" value="${key.y}" oninput="updateKey(${i},'y',this.value)" placeholder="Base64url-encoded Y coordinate">
+      </div>`;
+    el.appendChild(card);
+  });
+}
+
+function addSigningKey() {
+  state.signingKeys.push({ kid: '', kty: 'EC', crv: 'P-256', x: '', y: '', use: 'sig', alg: 'ES256' });
+  renderSigningKeys();
+  render();
+}
+function removeSigningKey(i) {
+  state.signingKeys.splice(i, 1);
+  renderSigningKeys();
+  render();
+}
+function updateKey(i, field, value) {
+  state.signingKeys[i][field] = value;
+  if (field === 'alg') {
+    state.signingKeys[i].kty = value === 'ES256' ? 'EC' : 'RSA';
+    state.signingKeys[i].crv = value === 'ES256' ? 'P-256' : undefined;
+    renderSigningKeys();
+  }
+  render();
+}
+
+// ── Build JSON ──
+function render() {
+  const v = id => document.getElementById(id).value;
+  const ucpVersion = state.ucpVersion || UCP_VERSION_DEFAULT;
+  const serviceVersion = state.serviceVersion || ucpVersion;
+  const specBase = "https://ucp.dev";
+
+  // Services
+  const service = { version: serviceVersion, spec: `${specBase}/specification/overview` };
+  if (state.restEnabled) {
+    service.rest = {
+      schema: `${specBase}/services/shopping/rest.openapi.json`,
+      endpoint: v('restEndpoint') || "https://business.example.com/ucp/v1"
+    };
+  }
+  if (state.mcpEnabled) {
+    service.mcp = {
+      schema: `${specBase}/services/shopping/mcp.openrpc.json`,
+      endpoint: v('mcpEndpoint') || "https://business.example.com/ucp/mcp"
+    };
+  }
+  if (state.a2aEnabled) {
+    service.a2a = {
+      endpoint: v('a2aEndpoint') || "https://business.example.com/.well-known/agent-card.json"
+    };
+  }
+  if (state.embeddedEnabled) {
+    service.embedded = {
+      schema: `${specBase}/services/shopping/embedded.openrpc.json`
+    };
+  }
+
+  // Capabilities
+  const caps = state.capabilities.filter(c => c.on).map(c => {
+    const obj = {
+      name: c.name,
+      version: ucpVersion,
+      spec: `${specBase}/specification/${c.name.split('.').pop()}`,
+      schema: `${specBase}/schemas/shopping/${c.name.split('.').pop()}.json`
+    };
+    if (c.extends) obj.extends = c.extends;
+    return obj;
+  });
+
+  // Payment handler
+  const tokenParams = state.tokenizationType === "PAYMENT_GATEWAY"
+    ? { gateway: v('gateway') || "stripe", gatewayMerchantId: v('gatewayMerchantId') || "YOUR_GATEWAY_MERCHANT_ID" }
+    : { protocolVersion: "ECv2", publicKey: v('directPublicKey') || "YOUR_PUBLIC_KEY" };
+
+  const merchantInfo = {
+    merchant_name: v('merchantName') || "Example Merchant",
+    merchant_id: v('merchantId') || "01234567890123456789",
+  };
+  const mo = v('merchantOrigin').trim();
+  if (mo) merchantInfo.merchant_origin = mo;
+
+  const handler = {
+    id: state.gpayHandlerId,
+    name: "com.google.pay",
+    version: ucpVersion,
+    spec: `https://pay.google.com/gp/p/ucp/${ucpVersion}/`,
+    config_schema: `https://pay.google.com/gp/p/ucp/${ucpVersion}/schemas/config.json`,
+    instrument_schemas: [`https://pay.google.com/gp/p/ucp/${ucpVersion}/schemas/card_payment_instrument.json`],
+    config: {
+      api_version: 2,
+      api_version_minor: 0,
+      environment: state.gpayEnvironment,
+      merchant_info: merchantInfo,
+      allowed_payment_methods: [{
+        type: "CARD",
+        parameters: {
+          allowed_auth_methods: [...state.allowedAuthMethods],
+          allowed_card_networks: [...state.allowedCardNetworks]
+        },
+        tokenization_specification: {
+          type: state.tokenizationType,
+          parameters: tokenParams
+        }
+      }]
+    }
+  };
+
+  // Full profile
+  const profile = {
+    ucp: {
+      version: ucpVersion,
+      services: { "dev.ucp.shopping": service },
+      capabilities: caps
+    },
+    payment: { handlers: [handler] }
+  };
+
+  // Signing keys
+  if (state.signingKeys.length > 0) {
+    profile.signing_keys = state.signingKeys.map(k => {
+      const obj = { kid: k.kid || "key_1", kty: k.kty, use: k.use, alg: k.alg };
+      if (k.crv) obj.crv = k.crv;
+      if (k.x) obj.x = k.x;
+      if (k.y) obj.y = k.y;
+      return obj;
+    });
+  }
+
+  // Highlight
+  const raw = JSON.stringify(profile, null, 2)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const highlighted = raw
+    .replace(/("(?:[^"\\]|\\.)*")\s*:/g, (_, k) => `<span class="key">${k}</span>:`)
+    .replace(/:\s*("(?:[^"\\]|\\.)*")/g, (_, v) => `: <span class="str">${v}</span>`)
+    .replace(/:\s*(\d+)/g, (_, n) => `: <span class="num">${n}</span>`)
+    .replace(/:\s*(true|false)/g, (_, b) => `: <span class="bool">${b}</span>`);
+  document.getElementById('jsonOutput').innerHTML = highlighted;
+}
+
+// ── Pill groups (single-select) ──
+document.querySelectorAll('.pill-group').forEach(group => {
+  const field = group.dataset.field;
+  group.querySelectorAll('.pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      group.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state[field] = pill.dataset.value;
+      if (field === 'tokenizationType') {
+        document.getElementById('gatewayFields').style.display = pill.dataset.value === 'PAYMENT_GATEWAY' ? '' : 'none';
+        document.getElementById('directFields').style.display = pill.dataset.value === 'DIRECT' ? '' : 'none';
+      }
+      render();
+    });
+  });
+});
+
+// ── Tag groups (multi-select) ──
+document.querySelectorAll('.tag-group').forEach(group => {
+  const field = group.dataset.field;
+  group.querySelectorAll('.tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+      const val = tag.dataset.value;
+      const idx = state[field].indexOf(val);
+      if (idx > -1) {
+        state[field].splice(idx, 1);
+        tag.classList.remove('active');
+        const dot = tag.querySelector('.dot');
+        if (dot) dot.remove();
+      } else {
+        state[field].push(val);
+        tag.classList.add('active');
+        const dot = document.createElement('span');
+        dot.className = 'dot'; dot.textContent = '●';
+        tag.prepend(dot);
+      }
+      render();
+    });
+  });
+});
+
+// ── Toggles ──
+document.querySelectorAll('.toggle-row').forEach(row => {
+  const field = row.dataset.toggle;
+  if (!field) return;
+  row.addEventListener('click', () => {
+    state[field] = !state[field];
+    row.querySelector('.toggle-track').classList.toggle('active', state[field]);
+    // Show/hide associated fields
+    const fieldMap = {
+      restEnabled: 'restFields', mcpEnabled: 'mcpFields',
+      a2aEnabled: 'a2aFields',
+    };
+    if (fieldMap[field]) {
+      document.getElementById(fieldMap[field]).style.display = state[field] ? '' : 'none';
+    }
+    render();
+  });
+});
+
+// ── Text/select inputs ──
+['restEndpoint','mcpEndpoint','a2aEndpoint',
+ 'merchantName','merchantId','merchantOrigin','gateway','gatewayMerchantId','directPublicKey'
+].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) { el.addEventListener('input', render); el.addEventListener('change', render); }
+});
+
+// ── Copy ──
+function copyJSON() {
+  const text = document.getElementById('jsonOutput').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy JSON'; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+// ── Init ──
+renderCapabilities();
+renderSigningKeys();
+render();
+</script>
+
+</body>
+</html>
